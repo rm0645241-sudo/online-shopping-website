@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cozy Corner Store</title>
+<style>
+  :root { --bg:#faf6f0; --card:#fff; --ink:#2b2622; --muted:#7a6f66; --accent:#c8553d; --accent-d:#a8432f; --line:#e8dfd3; --ok:#2f7d4f; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"Trebuchet MS","Segoe UI",sans-serif; }
+  button, input, select { font:inherit; }
+  :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  header { position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); }
+  .bar { max-width:1100px; margin:0 auto; padding:14px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .logo { font-size:1.35rem; font-weight:700; margin-right:auto; }
+  .logo span { color:var(--accent); }
+  .cart-btn { position:relative; background:var(--ink); color:#fff; border:0; border-radius:10px; padding:10px 16px; cursor:pointer; }
+  .badge { background:var(--accent); border-radius:99px; padding:1px 8px; margin-left:6px; font-size:.85rem; }
+  main { max-width:1100px; margin:0 auto; padding:18px; }
+  .tools { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+  .tools input, .tools select { padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+  .tools input { flex:1 1 200px; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+  .chip { border:1px solid var(--line); background:#fff; border-radius:99px; padding:7px 14px; cursor:pointer; }
+  .chip[aria-pressed="true"] { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; display:flex; flex-direction:column; transition:transform .15s, box-shadow .15s; }
+  .card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(60,40,20,.1); }
+  .emoji { font-size:3.6rem; text-align:center; background:var(--bg); border-radius:12px; padding:14px 0; }
+  .card h3 { margin:12px 0 2px; font-size:1.05rem; }
+  .cat { color:var(--muted); font-size:.85rem; }
+  .row { display:flex; align-items:center; justify-content:space-between; margin-top:auto; padding-top:12px; }
+  .price { font-weight:700; font-size:1.1rem; }
+  .btn { background:var(--accent); color:#fff; border:0; border-radius:10px; padding:9px 14px; cursor:pointer; }
+  .btn:hover { background:var(--accent-d); }
+  .btn.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .empty { text-align:center; color:var(--muted); padding:40px 0; }
+  /* drawer */
+  .overlay { position:fixed; inset:0; background:rgba(30,20,10,.45); display:none; z-index:10; }
+  .overlay.open { display:block; }
+  .drawer { position:fixed; top:0; right:0; height:100%; width:min(400px,100%); background:#fff; z-index:11; transform:translateX(100%); transition:transform .25s; display:flex; flex-direction:column; }
+  .drawer.open { transform:none; }
+  .drawer header, .drawer footer { padding:16px 18px; position:static; background:#fff; }
+  .drawer header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); }
+  .drawer h2 { margin:0; font-size:1.2rem; }
+  .items { flex:1; overflow-y:auto; padding:6px 18px; }
+  .item { display:grid; grid-template-columns:48px 1fr auto; gap:10px; align-items:center; padding:12px 0; border-bottom:1px solid var(--line); }
+  .item .e { font-size:2rem; text-align:center; }
+  .item small { color:var(--muted); }
+  .qty { display:flex; align-items:center; gap:6px; margin-top:4px; }
+  .qty button { width:28px; height:28px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+  .remove { background:none; border:0; color:var(--muted); cursor:pointer; text-decoration:underline; font-size:.85rem; }
+  .totals { border-top:1px solid var(--line); }
+  .totals div { display:flex; justify-content:space-between; margin:6px 0; }
+  .totals .grand { font-weight:700; font-size:1.15rem; }
+  .x { background:none; border:0; font-size:1.5rem; cursor:pointer; }
+  /* modal */
+  .modal { position:fixed; z-index:20; inset:0; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(30,20,10,.55); }
+  .modal.open { display:flex; }
+  .dialog { background:#fff; border-radius:18px; width:min(520px,100%); max-height:92vh; overflow-y:auto; padding:22px; }
+  .dialog h2 { margin:0 0 12px; }
+  .summary { background:var(--bg); border-radius:12px; padding:10px 14px; margin-bottom:14px; }
+  .summary div { display:flex; justify-content:space-between; padding:4px 0; }
+  label { display:block; margin:10px 0 4px; font-weight:600; font-size:.92rem; }
+  .field { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; }
+  .field[aria-invalid="true"] { border-color:#c0392b; }
+  .err { color:#c0392b; font-size:.85rem; min-height:1.1em; }
+  .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
+  .done { text-align:center; padding:10px 0; }
+  .done .big { font-size:3.5rem; }
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--ink); color:#fff; padding:10px 18px; border-radius:99px; z-index:30; transition:transform .25s; }
+  .toast.show { transform:translateX(-50%); }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="logo">Cozy <span>Corner</span></div>
+    <button class="cart-btn" id="open-cart" aria-label="Open cart">🛒 Cart <span class="badge" id="count">0</span></button>
+  </div>
+</header>
+
+<main>
+  <div class="tools">
+    <input id="search" type="search" placeholder="Search products…" aria-label="Search products">
+    <select id="sort" aria-label="Sort products">
+      <option value="default">Sort: Featured</option>
+      <option value="low">Price: Low to High</option>
+      <option value="high">Price: High to Low</option>
+      <option value="name">Name: A to Z</option>
+    </select>
+  </div>
+  <div class="chips" id="chips" role="group" aria-label="Categories"></div>
+  <div class="grid" id="grid"></div>
+  <p class="empty" id="empty" hidden>No products match your search.</p>
+</main>
+
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer" aria-label="Shopping cart" aria-hidden="true">
+  <header><h2>Your Cart</h2><button class="x" id="close-cart" aria-label="Close cart">×</button></header>
+  <div class="items" id="items"></div>
+  <footer>
+    <div class="totals">
+      <div><span>Items</span><span id="t-items">0</span></div>
+      <div><span>Subtotal</span><span id="t-sub">₹0</span></div>
+      <div><span>GST (18%)</span><span id="t-tax">₹0</span></div>
+      <div class="grand"><span>Total</span><span id="t-total">₹0</span></div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="clear">Clear</button>
+      <button class="btn" id="checkout">Checkout</button>
+    </div>
+  </footer>
+</aside>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="dialog" id="dialog"></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+  // ---------- Data ----------
+  const PRODUCTS = [
+    { id: 1, name: "Ceramic Mug",       category: "Home",    price: 349,  emoji: "☕" },
+    { id: 2, name: "Scented Candle",    category: "Home",    price: 499,  emoji: "🕯️" },
+    { id: 3, name: "Succulent Plant",   category: "Home",    price: 299,  emoji: "🪴" },
+    { id: 4, name: "Wireless Earbuds",  category: "Tech",    price: 1999, emoji: "🎧" },
+    { id: 5, name: "Mechanical Keyboard", category: "Tech",  price: 3499, emoji: "⌨️" },
+    { id: 6, name: "Power Bank",        category: "Tech",    price: 1299, emoji: "🔋" },
+    { id: 7, name: "Canvas Backpack",   category: "Fashion", price: 1799, emoji: "🎒" },
+    { id: 8, name: "Sunglasses",        category: "Fashion", price: 899,  emoji: "🕶️" },
+    { id: 9, name: "Sneakers",          category: "Fashion", price: 2799, emoji: "👟" },
+    { id: 10, name: "Notebook Set",     category: "Study",   price: 249,  emoji: "📓" },
+    { id: 11, name: "Desk Lamp",        category: "Study",   price: 1099, emoji: "💡" },
+    { id: 12, name: "Fountain Pen",     category: "Study",   price: 599,  emoji: "🖋️" }
+  ];
+  const TAX_RATE = 0.18;
+
+  // ---------- State ----------
+  const state = { category: "All", query: "", sort: "default", cart: {} }; // cart: { id: qty }
+  try { state.cart = JSON.parse(localStorage.getItem("cart")) || {}; } catch (_) {}
+
+  const $ = id => document.getElementById(id);
+  const money = n => "₹" + Math.round(n).toLocaleString("en-IN");
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const byId = id => PRODUCTS.find(p => p.id === id);
+
+  // ---------- Cart math ----------
+  function cartLines() {
+    return Object.entries(state.cart)
+      .map(([id, qty]) => ({ product: byId(Number(id)), qty }))
+      .filter(l => l.product && l.qty > 0);
+  }
+  function totals() {
+    const lines = cartLines();
+    const items = lines.reduce((n, l) => n + l.qty, 0);
+    const subtotal = lines.reduce((s, l) => s + l.qty * l.product.price, 0);
+    const tax = subtotal * TAX_RATE;
+    return { lines, items, subtotal, tax, total: subtotal + tax };
+  }
+  function save() { try { localStorage.setItem("cart", JSON.stringify(state.cart)); } catch (_) {} }
+
+  // ---------- Rendering ----------
+  function visibleProducts() {
+    let list = PRODUCTS.filter(p =>
+      (state.category === "All" || p.category === state.category) &&
+      p.name.toLowerCase().includes(state.query.toLowerCase()));
+    if (state.sort === "low") list.sort((a, b) => a.price - b.price);
+    if (state.sort === "high") list.sort((a, b) => b.price - a.price);
+    if (state.sort === "name") list.sort((a, b) => a.name.localeCompare(b.name));
+    return list;
+  }
+
+  function renderChips() {
+    const cats = ["All", ...new Set(PRODUCTS.map(p => p.category))];
+    $("chips").innerHTML = cats.map(c =>
+      `<button class="chip" data-cat="${c}" aria-pressed="${c === state.category}">${c}</button>`).join("");
+  }
+
+  function renderProducts() {
+    const list = visibleProducts();
+    $("empty").hidden = list.length > 0;
+    $("grid").innerHTML = list.map(p => `
+      <article class="card">
+        <div class="emoji" aria-hidden="true">${p.emoji}</div>
+        <h3>${esc(p.name)}</h3>
+        <span class="cat">${esc(p.category)}</span>
+        <div class="row">
+          <span class="price">${money(p.price)}</span>
+          <button class="btn" data-add="${p.id}" aria-label="Add ${esc(p.name)} to cart">Add</button>
+        </div>
+      </article>`).join("");
+  }
+
+  function renderCart() {
+    const t = totals();
+    $("count").textContent = t.items;
+    $("t-items").textContent = t.items;
+    $("t-sub").textContent = money(t.subtotal);
+    $("t-tax").textContent = money(t.tax);
+    $("t-total").textContent = money(t.total);
+    $("checkout").disabled = $("clear").disabled = t.items === 0;
+    $("items").innerHTML = t.lines.length ? t.lines.map(({ product: p, qty }) => `
+      <div class="item">
+        <div class="e" aria-hidden="true">${p.emoji}</div>
+        <div>
+          <strong>${esc(p.name)}</strong><br><small>${money(p.price)} each</small>
+          <div class="qty">
+            <button data-dec="${p.id}" aria-label="Decrease quantity">−</button>
+            <span>${qty}</span>
+            <button data-inc="${p.id}" aria-label="Increase quantity">+</button>
+          </div>
+        </div>
+        <div style="text-align:right"><strong>${money(p.price * qty)}</strong><br>
+          <button class="remove" data-rm="${p.id}">Remove</button></div>
+      </div>`).join("") : '<p class="empty">Your cart is empty.<br>Add something nice! 🛍️</p>';
+  }
+
+  // ---------- Actions ----------
+  function setQty(id, qty) {
+    if (qty <= 0) delete state.cart[id]; else state.cart[id] = qty;
+    save(); renderCart();
+  }
+  let toastTimer;
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1600);
+  }
+  function openCart(open) {
+    $("drawer").classList.toggle("open", open);
+    $("overlay").classList.toggle("open", open);
+    $("drawer").setAttribute("aria-hidden", String(!open));
+  }
+
+  // ---------- Checkout modal ----------
+  function openModal() {
+    const t = totals();
+    if (!t.items) return;
+    $("dialog").innerHTML = `
+      <h2 id="modal-title">Order preview</h2>
+      <div class="summary">
+        ${t.lines.map(l => `<div><span>${l.product.emoji} ${esc(l.product.name)} × ${l.qty}</span><span>${money(l.product.price * l.qty)}</span></div>`).join("")}
+        <hr>
+        <div><span>Subtotal</span><span>${money(t.subtotal)}</span></div>
+        <div><span>GST (18%)</span><span>${money(t.tax)}</span></div>
+        <div><strong>Total</strong><strong>${money(t.total)}</strong></div>
+      </div>
+      <form id="order-form" novalidate>
+        <label for="f-name">Full name</label>
+        <input class="field" id="f-name" autocomplete="name">
+        <div class="err" id="e-name"></div>
+        <label for="f-email">Email</label>
+        <input class="field" id="f-email" type="email" autocomplete="email">
+        <div class="err" id="e-email"></div>
+        <div class="actions">
+          <button type="button" class="btn ghost" id="m-cancel">Back</button>
+          <button type="submit" class="btn">Place order</button>
+        </div>
+      </form>`;
+    $("modal").classList.add("open");
+    $("f-name").focus();
+  }
+  function closeModal() { $("modal").classList.remove("open"); }
+
+  function submitOrder(e) {
+    e.preventDefault();
+    const name = $("f-name").value.trim(), email = $("f-email").value.trim();
+    const nameOk = name.length >= 2;
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    $("e-name").textContent = nameOk ? "" : "Please enter your name.";
+    $("e-email").textContent = emailOk ? "" : "Please enter a valid email.";
+    $("f-name").setAttribute("aria-invalid", String(!nameOk));
+    $("f-email").setAttribute("aria-invalid", String(!emailOk));
+    if (!nameOk || !emailOk) return;
+    const total = money(totals().total), orderId = "ORD-" + Math.floor(100000 + Math.random() * 900000);
+    $("dialog").innerHTML = `
+      <div class="done">
+        <div class="big">🎉</div>
+        <h2 id="modal-title">Thank you, ${esc(name)}!</h2>
+        <p>Order <strong>${orderId}</strong> for <strong>${total}</strong> is confirmed.<br>A receipt would be sent to ${esc(email)}.</p>
+        <p class="cat">(Demo only: no payment is taken.)</p>
+        <button class="btn" id="m-close">Continue shopping</button>
+      </div>`;
+    state.cart = {}; save(); renderCart();
+  }
+
+  // ---------- Events ----------
+  document.addEventListener("click", e => {
+    const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.add) { const id = t.dataset.add; setQty(id, (state.cart[id] || 0) + 1); toast(`${byId(Number(id)).name} added`); }
+    else if (t.dataset.inc) setQty(t.dataset.inc, (state.cart[t.dataset.inc] || 0) + 1);
+    else if (t.dataset.dec) setQty(t.dataset.dec, (state.cart[t.dataset.dec] || 0) - 1);
+    else if (t.dataset.rm) setQty(t.dataset.rm, 0);
+    else if (t.dataset.cat) { state.category = t.dataset.cat; renderChips(); renderProducts(); }
+    else if (t.id === "m-cancel" || t.id === "m-close") closeModal();
+  });
+  $("open-cart").onclick = () => openCart(true);
+  $("close-cart").onclick = $("overlay").onclick = () => openCart(false);
+  $("clear").onclick = () => { state.cart = {}; save(); renderCart(); };
+  $("checkout").onclick = () => { openCart(false); openModal(); };
+  $("search").addEventListener("input", e => { state.query = e.target.value; renderProducts(); });
+  $("sort").addEventListener("change", e => { state.sort = e.target.value; renderProducts(); });
+  $("dialog").addEventListener("submit", e => { if (e.target.id === "order-form") submitOrder(e); });
+  $("modal").addEventListener("click", e => { if (e.target === $("modal")) closeModal(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { closeModal(); openCart(false); } });
+
+  renderChips(); renderProducts(); renderCart();
+</script>
+</body>
+</html>
